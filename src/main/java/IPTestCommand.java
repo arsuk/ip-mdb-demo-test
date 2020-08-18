@@ -18,6 +18,11 @@ import javax.naming.InitialContext;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Properties;
@@ -50,14 +55,16 @@ public class IPTestCommand implements MessageListener {
 		SimpleDateFormat dateTimeFormatGMT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");	// 2018-12-28T15:25:40.264
 
         if (MyArgs.arg(args,"-h") || MyArgs.arg(args,"-?") || MyArgs.arg(args,"-help")) {
-            System.out.println("IPTestCommand V1.0.2");
-            System.out.println("Usage: <count> <tps> -template templatefile -value amount -creditorbic bic -debtorbic bic -properties jndiprops -range n");
+            System.out.println("IPTestCommand V1.0.3");
+            System.out.println("Usage: <count> <tps> -template templatefile -value amount -creditorbic bic -debtorbic bic -properties jndiprops");
+            System.out.println("      -tpsrange n -creditoribans ibanfile -debtoribans ibanfile");
             System.out.println("Defaults are: count=10 tps=1 template=pacs.008.xml");
             System.out.println("Change the jndi.properties file to change the broker hostname or queue names.");
             System.out.println("'-h' or '-?' gives this help info.");
             System.out.println("The value and bic parameters are used to replace the template elements for testing purposes.");
-            System.out.println("The value and bic parameters can be comma separated lists, elements are selected ramdomly.");
-            System.out.println("The -range argument can be used to vary the tps rate within the + or - tps of the given range.");
+            System.out.println("The value and bic parameters can be comma separated lists, elements are selected ramdomly. IBANs can be ");
+            System.out.println("varied by providing a list in a file (one per line) for the creditoribans or debtoribans parameters.");          
+            System.out.println("The tpsrange argument can be used to vary the tps rate within a second for + or - of the given range.");
             System.out.println("If a zero count is used then the tool will not send messages and will receive messages until the queue is empty.");
             System.exit(0);
         }
@@ -84,7 +91,31 @@ public class IPTestCommand implements MessageListener {
 		String debtorBIC=MyArgs.arg(args,"-debtorbic",null);
 		String jndiProperties=MyArgs.arg(args,"-properties","jndi.properties");
 		String valueStr = MyArgs.arg(args,"-value","10");
-		String rangeStr = MyArgs.arg(args,"-range","0");
+		String rangeStr = MyArgs.arg(args,"-tpsrange","0");
+		String creditorIBANsFile = MyArgs.arg(args,"-creditoribans",null);
+		String debtorIBANsFile = MyArgs.arg(args,"-debtoribans",null);
+		
+		String creditorIBANs[]=null;
+		if (creditorIBANsFile!=null)
+		try {
+	        Path fileName = Paths.get(creditorIBANsFile);
+	        String ibans = new String(Files.readAllBytes(fileName),StandardCharsets.UTF_8);
+	        creditorIBANs=ibans.split("\n");
+		} catch (IOException e) {
+			logger.error("Bad file "+creditorIBANsFile);
+			System.exit(1);
+		}
+		String debtorIBANs[]=null;
+		if (debtorIBANsFile!=null)
+		try {
+	        Path fileName = Paths.get(debtorIBANsFile);
+	        String ibans = new String(Files.readAllBytes(fileName),StandardCharsets.UTF_8);
+	        debtorIBANs=ibans.split("\n");
+		} catch (IOException e) {
+			logger.error("Bad file "+debtorIBANsFile);
+			System.exit(1);
+		}
+		
 		int range=0;
 		try {range=Integer.parseInt(rangeStr);} catch (Exception e) {};
 		if (range<0 || range>=tps) {
@@ -121,8 +152,6 @@ public class IPTestCommand implements MessageListener {
 			ConnectionFactory cf;
 			Connection connection[]=null;
 			int connectionCount=DEFAULTCONNECTIONS;
-			
-			Random rand = new Random();	// Used for random parameter selection (if selected)
 
 			try {
 				Properties props=new Properties ();
@@ -194,7 +223,7 @@ public class IPTestCommand implements MessageListener {
 					String vStr=valueStr;
 					if (valueStr.contains(",")) {
 						String list[]=valueStr.split(",");
-						vStr=list[rand.nextInt(list.length)];					
+						vStr=list[randomNumbers.nextInt(list.length)];					
 					}
 					// Set msgDoc test values...
 					XMLutils.setElementValue(msgDoc,"MsgId",totalSendCount+"-"+startTime);
@@ -210,14 +239,22 @@ public class IPTestCommand implements MessageListener {
 					XMLutils.setElementValue(msgDoc,"EndToEndId",TxId);
 					if (debtorBIC!=null) {	// If specified, override template value
 						String list[]=debtorBIC.split(",");
-						String bic=list[rand.nextInt(list.length)];
+						String bic=list[randomNumbers.nextInt(list.length)];
 			            XMLutils.setElementValue(XMLutils.getElement(msgDoc,"InstgAgt"),"BIC",bic);           
 		            	XMLutils.setElementValue(XMLutils.getElement(msgDoc,"DbtrAgt"),"BIC",bic);           
 					}
 					if (creditorBIC!=null) {	// If specified, override template value
 						String list[]=creditorBIC.split(",");
-						String bic=list[rand.nextInt(list.length)];
+						String bic=list[randomNumbers.nextInt(list.length)];
 		            	XMLutils.setElementValue(XMLutils.getElement(msgDoc,"CdtrAgt"),"BIC",bic);
+					}
+					if (debtorIBANs!=null && debtorIBANs.length>0) {	// If specified, override template value
+						String iban=debtorIBANs[randomNumbers.nextInt(debtorIBANs.length)];
+		            	XMLutils.setElementValue(XMLutils.getElement(msgDoc,"DbtrAcct"),"IBAN",iban);           
+					}
+					if (creditorIBANs!=null && creditorIBANs.length>0) {	// If specified, override template value
+						String iban=creditorIBANs[randomNumbers.nextInt(creditorIBANs.length)];
+		            	XMLutils.setElementValue(XMLutils.getElement(msgDoc,"CdtrAcct"),"IBAN",iban);
 					}
 
 					message[c].setText(XMLutils.documentToString(msgDoc));
@@ -228,15 +265,14 @@ public class IPTestCommand implements MessageListener {
 					try{	// Sleep if not late (sleep until next send needed for TPS)
     					long now=System.currentTimeMillis(); 
     					long sendTime=now-startTime;
-                     	int remainingTps=currentTPS-sleepSendCount;
-                     	if (remainingTps==0) {
+                     	if (sleepSendCount==currentTPS) {
                      		sleepSendCount=0;
 							// Sleep for rest of second if TPS already delivered
     						totalSendTime=totalSendTime+sendTime;
                             if (sendTime<ONESEC)
 							    Thread.sleep(ONESEC-sendTime);
 							startTime=System.currentTimeMillis();
-                            // Set current tps to new target for next cycle if a range has been specified
+                            // Set current tps to new target tps for next cycle if a range has been specified
                             if (range>0) {
                             	int r=randomNumbers.nextInt(range);
                             	if (randomFlag)
@@ -249,9 +285,10 @@ public class IPTestCommand implements MessageListener {
                             	currentTPS=tps;
                         } else {
                         	long timeLeft=ONESEC-sendTime;
-							if (timeLeft>100)
- 								Thread.sleep(timeLeft/remainingTps);	// Divide remaining TPS over time 
- 							else
+							if (timeLeft>100) {
+		                     	int remainingTps=currentTPS-sleepSendCount;
+ 								Thread.sleep(timeLeft/remainingTps);	// Divide remaining TPS over time
+							} else
  								Thread.sleep(0);
                         }
 					} catch (Exception e) {};

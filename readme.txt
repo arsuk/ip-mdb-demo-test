@@ -19,11 +19,14 @@ The command line is:
 java -cp ip-mdb-test-1.0.jar IPTestCommand
 
 Usage: <count> <tps> -template templatefile -value amount -creditorbic bic -debtorbic bic -properties jndiprops
+       -tpsrange n -creditoribans ibanfile -debtoribans ibanfile
 Defaults are: count=10 tps=10 template=pacs.008.xml
 Change the jndi.properties file to change the broker hostname or add selectable queue names.
 '-h' or '-?' gives this help info.
 The value and bic parameters can be used to replace the template elements for testing purposes.
 The value and bic parameters can be comma separated lists, elements are selected ramdomly.
+IBANs can be varied by providing a list in a file (one per line) for the creditoribans or debtoribans parameters.
+The tpsrange argument can be used to vary the tps rate within a second for + or - of the given range.
 After requested number of transactions have been sent the tool will wait for replies until 10s after the reply
 queue is empty. 
 If a zero send count is used then the tool will skip sending messages and receive messages until the queue is

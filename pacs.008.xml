@@ -37,11 +37,11 @@
 			<AccptncDtTm>2018-12-28T14:31:39.977000Z</AccptncDtTm>
 			<ChrgBr>SLEV</ChrgBr>
 			<Dbtr>
-				<Nm>Rabobank - not checked</Nm>
+				<Nm>ANLO - not checked</Nm>
 			</Dbtr>
 			<DbtrAcct>
 				<Id>
-					<IBAN>NL49RABO0117300012</IBAN>
+					<IBAN>NL49ANLO0117300012</IBAN>
 				</Id>
 			</DbtrAcct>
 			<DbtrAgt>
@@ -55,11 +55,11 @@
 				</FinInstnId>
 			</CdtrAgt>
 			<Cdtr>
-				<Nm>ABN - not checked</Nm>
+				<Nm>ABCA - not checked</Nm>
 			</Cdtr>
 			<CdtrAcct>
 				<Id>
-					<IBAN>NL84ABNA0546231462</IBAN>
+					<IBAN>NL99ABCA0546231462</IBAN>
 				</Id>
 			</CdtrAcct>
 			<RmtInf>
