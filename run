@@ -1,0 +1,2 @@
+java -cp .:target/ip-mdb-test-1.0.jar IPTestCommand $@
+

@@ -1,0 +1,15 @@
+#!/bin/bash
+if [ "$1" ]; then
+    TPS=$1
+    if ! [ "$TPS" -eq "$TPS" ] 2>/dev/null; then
+        echo not a number
+        exit 1
+    fi
+else
+    TPS=1
+fi
+FILE=jndi.properties
+if cat $FILE | sed "s/TPS=.*/TPS=$TPS/g" > $FILE.tmp
+then
+    mv $FILE.tmp $FILE
+fi

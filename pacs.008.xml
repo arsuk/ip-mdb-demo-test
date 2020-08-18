@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.02" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<FIToFICstmrCdtTrf>
+		<GrpHdr>
+			<MsgId>HFP28G001-BB01P8-0929121357</MsgId>
+			<CreDtTm>2017-09-29T12:13:53</CreDtTm>
+			<NbOfTxs>1</NbOfTxs>
+			<TtlIntrBkSttlmAmt Ccy="EUR">10.00</TtlIntrBkSttlmAmt>
+			<IntrBkSttlmDt>2017-09-29</IntrBkSttlmDt>
+			<SttlmInf>
+				<SttlmMtd>CLRG</SttlmMtd>
+				<ClrSys>
+					<Cd>INC</Cd>
+				</ClrSys>
+			</SttlmInf>
+			<PmtTpInf>
+				<SvcLvl>
+					<Cd>SEPA</Cd>
+				</SvcLvl>
+				<LclInstrm>
+					<Cd>INSTTC01</Cd>
+				</LclInstrm>
+			</PmtTpInf>
+			<InstgAgt>
+				<FinInstnId>
+					<BIC>ANDLNL2A</BIC>
+				</FinInstnId>
+			</InstgAgt>
+		</GrpHdr>
+		<CdtTrfTxInf>
+			<PmtId>
+				<InstrId>HFP28G001-BB01P8-0929121358-InstrId</InstrId>
+				<EndToEndId>PT20181228 153139.977000000014754</EndToEndId>
+				<TxId>PT20181228 153139.977000000014754</TxId>
+			</PmtId>
+			<IntrBkSttlmAmt Ccy="EUR">10.00</IntrBkSttlmAmt>
+			<AccptncDtTm>2018-12-28T14:31:39.977000Z</AccptncDtTm>
+			<ChrgBr>SLEV</ChrgBr>
+			<Dbtr>
+				<Nm>Rabobank - not checked</Nm>
+			</Dbtr>
+			<DbtrAcct>
+				<Id>
+					<IBAN>NL49RABO0117300012</IBAN>
+				</Id>
+			</DbtrAcct>
+			<DbtrAgt>
+				<FinInstnId>
+					<BIC>ANDLNL2A</BIC>
+				</FinInstnId>
+			</DbtrAgt>
+			<CdtrAgt>
+				<FinInstnId>
+					<BIC>ANDLNL2A</BIC>
+				</FinInstnId>
+			</CdtrAgt>
+			<Cdtr>
+				<Nm>ABN - not checked</Nm>
+			</Cdtr>
+			<CdtrAcct>
+				<Id>
+					<IBAN>NL84ABNA0546231462</IBAN>
+				</Id>
+			</CdtrAcct>
+			<RmtInf>
+				<Ustrd>IP</Ustrd>
+			</RmtInf>
+		</CdtTrfTxInf>
+	</FIToFICstmrCdtTrf>
+</Document>
+

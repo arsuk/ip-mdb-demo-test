@@ -1,0 +1,9 @@
+# Maven standard output sources
+target
+#Eclipse IDE settings
+.project
+.classpath
+.settings
+#IntelliJ IDEA IDE settings
+*.iml
+.idea
