@@ -23,6 +23,7 @@ Defaults are: count=10 tps=10 template=pacs.008.xml
 Change the jndi.properties file to change the broker hostname or add selectable queue names.
 '-h' or '-?' gives this help info.
 The value and bic parameters can be used to replace the template elements for testing purposes.
+The value and bic parameters can be comma separated lists, elements are selected ramdomly.
 After requested number of transactions have been sent the tool will wait for replies until 10s after the reply
 queue is empty. 
 If a zero send count is used then the tool will skip sending messages and receive messages until the queue is
