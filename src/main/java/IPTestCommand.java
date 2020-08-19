@@ -55,15 +55,15 @@ public class IPTestCommand implements MessageListener {
 		SimpleDateFormat dateTimeFormatGMT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");	// 2018-12-28T15:25:40.264
 
         if (MyArgs.arg(args,"-h") || MyArgs.arg(args,"-?") || MyArgs.arg(args,"-help")) {
-            System.out.println("IPTestCommand V1.0.3");
-            System.out.println("Usage: <count> <tps> -template templatefile -value amount -creditorbic bic -debtorbic bic -properties jndiprops");
-            System.out.println("      -tpsrange n -creditoribans ibanfile -debtoribans ibanfile");
+            System.out.println("IPTestCommand V1.0.4");
+            System.out.println("Usage: <count> <tps> -template templatefile -values amounts -creditorbics bics -debtorbics bics -properties jndiprops");
+            System.out.println("      -tpsrange n -creditoribans ibans -debtoribans ibans");
             System.out.println("Defaults are: count=10 tps=1 template=pacs.008.xml");
             System.out.println("Change the jndi.properties file to change the broker hostname or queue names.");
             System.out.println("'-h' or '-?' gives this help info.");
-            System.out.println("The value and bic parameters are used to replace the template elements for testing purposes.");
-            System.out.println("The value and bic parameters can be comma separated lists, elements are selected ramdomly. IBANs can be ");
-            System.out.println("varied by providing a list in a file (one per line) for the creditoribans or debtoribans parameters.");          
+            System.out.println("The values and bics/ibans parameters are used to replace the template elements for testing purposes.");
+            System.out.println("These parameters can be comma separated lists, elements are selected ramdomly. If a filename is given");
+            System.out.println("instead of a list then the file should have one element one per line.");          
             System.out.println("The tpsrange argument can be used to vary the tps rate within a second for + or - of the given range.");
             System.out.println("If a zero count is used then the tool will not send messages and will receive messages until the queue is empty.");
             System.exit(0);
@@ -87,34 +87,19 @@ public class IPTestCommand implements MessageListener {
 		int trace=0;
 		try {trace=Integer.parseInt(traceStr);} catch (Exception e) {};
 		String templateFile = MyArgs.arg(args,"-template",defaultTemplate);
-		String creditorBIC=MyArgs.arg(args,"-creditorbic",null);
-		String debtorBIC=MyArgs.arg(args,"-debtorbic",null);
+		String creditorBICsStr=MyArgs.arg(args,"-creditorbics",null);
+		String debtorBICsStr=MyArgs.arg(args,"-debtorbics",null);
 		String jndiProperties=MyArgs.arg(args,"-properties","jndi.properties");
-		String valueStr = MyArgs.arg(args,"-value","10");
+		String valueStr = MyArgs.arg(args,"-values","10");
 		String rangeStr = MyArgs.arg(args,"-tpsrange","0");
-		String creditorIBANsFile = MyArgs.arg(args,"-creditoribans",null);
-		String debtorIBANsFile = MyArgs.arg(args,"-debtoribans",null);
-		
-		String creditorIBANs[]=null;
-		if (creditorIBANsFile!=null)
-		try {
-	        Path fileName = Paths.get(creditorIBANsFile);
-	        String ibans = new String(Files.readAllBytes(fileName),StandardCharsets.UTF_8);
-	        creditorIBANs=ibans.split("\n");
-		} catch (IOException e) {
-			logger.error("Bad file "+creditorIBANsFile);
-			System.exit(1);
-		}
-		String debtorIBANs[]=null;
-		if (debtorIBANsFile!=null)
-		try {
-	        Path fileName = Paths.get(debtorIBANsFile);
-	        String ibans = new String(Files.readAllBytes(fileName),StandardCharsets.UTF_8);
-	        debtorIBANs=ibans.split("\n");
-		} catch (IOException e) {
-			logger.error("Bad file "+debtorIBANsFile);
-			System.exit(1);
-		}
+		String creditorIBANsStr = MyArgs.arg(args,"-creditoribans",null);
+		String debtorIBANsStr = MyArgs.arg(args,"-debtoribans",null);
+
+		String values[]=getValueList(valueStr);
+		String creditorBICs[]=getValueList(creditorBICsStr);
+		String debtorBICs[]=getValueList(debtorBICsStr);
+		String creditorIBANs[]=getValueList(creditorIBANsStr);
+		String debtorIBANs[]=getValueList(debtorIBANsStr);
 		
 		int range=0;
 		try {range=Integer.parseInt(rangeStr);} catch (Exception e) {};
@@ -221,9 +206,8 @@ public class IPTestCommand implements MessageListener {
 				for (int i=0;i<count&&!stopFlag;i++) {
 					// If valueStr is a list select a value
 					String vStr=valueStr;
-					if (valueStr.contains(",")) {
-						String list[]=valueStr.split(",");
-						vStr=list[randomNumbers.nextInt(list.length)];					
+					if (values!=null) {
+						vStr=values[randomNumbers.nextInt(values.length)];					
 					}
 					// Set msgDoc test values...
 					XMLutils.setElementValue(msgDoc,"MsgId",totalSendCount+"-"+startTime);
@@ -237,15 +221,13 @@ public class IPTestCommand implements MessageListener {
 					TxId=TxId.replaceAll("-", "");
 					XMLutils.setElementValue(msgDoc,"TxId",TxId);
 					XMLutils.setElementValue(msgDoc,"EndToEndId",TxId);
-					if (debtorBIC!=null) {	// If specified, override template value
-						String list[]=debtorBIC.split(",");
-						String bic=list[randomNumbers.nextInt(list.length)];
+					if (debtorBICs!=null) {	// If specified, override template value
+						String bic=debtorBICs[randomNumbers.nextInt(debtorBICs.length)];
 			            XMLutils.setElementValue(XMLutils.getElement(msgDoc,"InstgAgt"),"BIC",bic);           
 		            	XMLutils.setElementValue(XMLutils.getElement(msgDoc,"DbtrAgt"),"BIC",bic);           
 					}
-					if (creditorBIC!=null) {	// If specified, override template value
-						String list[]=creditorBIC.split(",");
-						String bic=list[randomNumbers.nextInt(list.length)];
+					if (creditorBICs!=null) {	// If specified, override template value
+						String bic=creditorBICs[randomNumbers.nextInt(creditorBICs.length)];
 		            	XMLutils.setElementValue(XMLutils.getElement(msgDoc,"CdtrAgt"),"BIC",bic);
 					}
 					if (debtorIBANs!=null && debtorIBANs.length>0) {	// If specified, override template value
@@ -403,6 +385,28 @@ public class IPTestCommand implements MessageListener {
 			  return true;
 		  }
 		  return false;
+	  }
+	  
+	  static String[] getValueList(String parameter) {
+		  String list[]=null;
+		  if (parameter!=null) {
+			  if (parameter.contains(",")) {
+				  // Convert parameter to list
+				  list=parameter.split(",");
+			  } else {
+				  // Try if it is a file and if so convert to 
+				  try {
+					  Path fileName = Paths.get(parameter);
+					  String ibans = new String(Files.readAllBytes(fileName),StandardCharsets.UTF_8);
+					  list=ibans.split("\n");
+				  } catch (IOException e) {
+					  // Not a valid file so assume that it is a single value parameter
+					  logger.trace("Bad file "+e);
+					  list=new String [] {parameter};
+				  }
+			  }
+		  }
+		  return list;
 	  }
 
 }
