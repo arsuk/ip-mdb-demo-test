@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Hashtable;
 import java.util.Properties;
 import java.util.Random;
 import java.util.TimeZone;
@@ -72,14 +73,13 @@ public class IPTestCommand implements MessageListener {
 		String countStr = MyArgs.arg(args,0,"10");
 		int count=10;
 		try {count=Integer.parseInt(countStr);} catch (Exception e) {}; 
-		if (count<0) {
-			logger.error("Bad count "+countStr);
-			System.exit(1);
+		if (count<=0) {
+			logger.error("Send count zero, will only wait while replies in queue, or negative, will wait for replies indefintely "+countStr);
 		}
 		String tpsStr = MyArgs.arg(args,1,"1");
-		int tps=10;
+		int tps=1;
 		try {tps=Integer.parseInt(tpsStr);} catch (Exception e) {}; 
-		if (tps<1) {
+		if (tps<0) {
 			logger.error("Bad tps "+tpsStr);
 			System.exit(1);
 		}
@@ -90,7 +90,7 @@ public class IPTestCommand implements MessageListener {
 		String creditorBICsStr=MyArgs.arg(args,"-creditorbics",null);
 		String debtorBICsStr=MyArgs.arg(args,"-debtorbics",null);
 		String jndiProperties=MyArgs.arg(args,"-properties","jndi.properties");
-		String valueStr = MyArgs.arg(args,"-values","10");
+		String valueStr = MyArgs.arg(args,"-values",null);
 		String rangeStr = MyArgs.arg(args,"-tpsrange","0");
 		String creditorIBANsStr = MyArgs.arg(args,"-creditoribans",null);
 		String debtorIBANsStr = MyArgs.arg(args,"-debtoribans",null);
@@ -121,11 +121,10 @@ public class IPTestCommand implements MessageListener {
 
 		Document msgDoc = XMLutils.bytesToDoc(docText);
 		
+		if (valueStr==null) valueStr=XMLutils.getElementValue(msgDoc,"IntrBkSttlmAmt");
+		
 		Random randomNumbers=new Random();
 		boolean randomFlag=true;
-
-		String resp="IPTestCommand: "+templateFile+" Value: "+valueStr+" Count: "+count+" TPS: "+tps+" +/- "+range;
-		logger.info(resp+"\n");
 
 		stopFlag=false;
 		int totalSendCount=0;
@@ -160,6 +159,21 @@ public class IPTestCommand implements MessageListener {
 					connectionCount=Integer.parseInt(cntStr);
 					if (connectionCount<1) connectionCount=1;
 				} catch (Exception e) {logger.info("ConnectionCount error "+e);};
+				
+				if (tps==1) {	// If TPS not specified as arg check properties
+					tpsStr = props.getProperty("TPS");
+					if (tpsStr!=null)
+					try {
+						int newTPS=Integer.parseInt(tpsStr);
+						if (tps!=newTPS) {
+							tps=newTPS;
+						}
+					}
+					catch (Exception e) {};
+				}
+				
+				String resp="IPTestCommand: "+templateFile+" Value: "+valueStr+" Count: "+count+" TPS: "+tps+" +/- "+range;
+				logger.info(resp+"\n");
 
                 String connectionFactoryStr="ConnectionFactory";
 
@@ -204,23 +218,21 @@ public class IPTestCommand implements MessageListener {
                 int sleepSendCount=0;
 
 				for (int i=0;i<count&&!stopFlag;i++) {
-					// If valueStr is a list select a value
-					String vStr=valueStr;
-					if (values!=null) {
-						vStr=values[randomNumbers.nextInt(values.length)];					
-					}
 					// Set msgDoc test values...
 					XMLutils.setElementValue(msgDoc,"MsgId",totalSendCount+"-"+startTime);
 					XMLutils.setElementValue(msgDoc,"CreDtTm",dateTimeFormat.format(new Date()));
 					XMLutils.setElementValue(msgDoc,"IntrBkSttlmDt",dateFormat.format(new Date()));
-					XMLutils.setElementValue(msgDoc,"TtlIntrBkSttlmAmt",vStr);
 					dateTimeFormatGMT.setTimeZone(TimeZone.getTimeZone("GMT"));	// From java 8 new Instant().toString() available
 					XMLutils.setElementValue(msgDoc,"AccptncDtTm",dateTimeFormatGMT.format(new Date())+"Z");
-					XMLutils.setElementValue(msgDoc,"IntrBkSttlmAmt",vStr);
 					String TxId="TX"+dateFormat.format(new Date())+" "+System.nanoTime();
 					TxId=TxId.replaceAll("-", "");
 					XMLutils.setElementValue(msgDoc,"TxId",TxId);
-					XMLutils.setElementValue(msgDoc,"EndToEndId",TxId);
+					XMLutils.setElementValue(msgDoc,"EndToEndId",TxId);					
+					if (values!=null) {
+						String vStr=values[randomNumbers.nextInt(values.length)];
+						XMLutils.setElementValue(msgDoc,"TtlIntrBkSttlmAmt",vStr);
+						XMLutils.setElementValue(msgDoc,"IntrBkSttlmAmt",vStr);
+					}
 					if (debtorBICs!=null) {	// If specified, override template value
 						String bic=debtorBICs[randomNumbers.nextInt(debtorBICs.length)];
 			            XMLutils.setElementValue(XMLutils.getElement(msgDoc,"InstgAgt"),"BIC",bic);           
@@ -324,10 +336,17 @@ public class IPTestCommand implements MessageListener {
 							}
 						} catch (Exception e) {};
 					}
+					// Check if the template has changed - can change values at run time - 10 secs
+					if (i%10==0 && isUpdated(new File(templateFile))) {
+						logger.info("Template file updated "+templateFile);
+						docText=XMLutils.getTemplate(templateFile);
+						msgDoc = XMLutils.bytesToDoc(docText);
+					}
 				}
+				// Loop to receive late replies - stops it no replies - goes on forever if send count < 0
 				oldRecvCount=recvCount.get();
 				boolean countChanged=true;
-				while (!stopFlag && countChanged) {
+				while (!stopFlag && (countChanged||count<0)) {
 					Thread.sleep(ONESEC);
 					countChanged=oldRecvCount!=recvCount.get();
 					if (countChanged) {
@@ -376,12 +395,17 @@ public class IPTestCommand implements MessageListener {
 			recvCount.incrementAndGet();
 	}
 	
-	  private static long oldTimeStamp;
+	  private static Hashtable<String, Long> timeStampCache=new Hashtable<String, Long>();
 
 	  static boolean isUpdated( File file ) {
 		  long fileTimeStamp = file.lastModified();
-		  if (fileTimeStamp!=oldTimeStamp) {
-			  oldTimeStamp=fileTimeStamp;
+		  Long oldTimeStamp = (Long) timeStampCache.get(file.getAbsolutePath());
+		  if (oldTimeStamp==null)
+			  timeStampCache.put(file.getAbsolutePath(),new Long(fileTimeStamp));
+		  else
+			  timeStampCache.replace(file.getAbsolutePath(),new Long(fileTimeStamp));
+
+		  if (oldTimeStamp!=null && fileTimeStamp!=oldTimeStamp) {
 			  return true;
 		  }
 		  return false;
