@@ -199,7 +199,7 @@ public class IPTestCommand implements MessageListener {
 					try {
 						respQueue=(Queue)ic.lookup(responseJndiName);
 					} catch (Exception e) {};
-					if (respQueue!=null) {
+					if (respQueue!=null && !respQueue.getQueueName().isEmpty()) {
                         Session csession = connection[i].createSession(false, Session.AUTO_ACKNOWLEDGE);
 						MessageConsumer consumer = csession.createConsumer(respQueue);
 						consumer.setMessageListener(new IPTestCommand());
