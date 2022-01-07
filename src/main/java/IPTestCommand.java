@@ -63,10 +63,10 @@ public class IPTestCommand implements MessageListener {
             System.out.println("Change the jndi.properties file to change the broker hostname or queue names.");
             System.out.println("'-h' or '-?' gives this help info.");
             System.out.println("The values and bics/ibans parameters are used to replace the template elements for testing purposes.");
-            System.out.println("These parameters can be comma separated lists, elements are selected ramdomly. If a filename is given");
+            System.out.println("These parameters can be comma separated lists, elements are selected randomly. If a filename is given");
             System.out.println("instead of a list then the file should have one element one per line.");          
             System.out.println("The tpsrange argument can be used to vary the tps rate within a second for + or - of the given range.");
-            System.out.println("If a zero count is used then the tool will not send messages and will receive messages until the queue is empty.");
+            System.out.println("If count is zero then the tool will not send messages and will receive messages until the queue is empty (-1 forever).");
             System.exit(0);
         }
 
@@ -375,7 +375,7 @@ public class IPTestCommand implements MessageListener {
 					try {
 						connection[i].close();
 					} catch (JMSException e) {
-						throw new RuntimeException(e);
+						logger.error("Close error "+e);
 					}
 				}
 			}
@@ -392,7 +392,8 @@ public class IPTestCommand implements MessageListener {
 
 	@Override
 	public void onMessage(Message msg) {
-			recvCount.incrementAndGet();
+		// Just count the received message - only used for the TPS count - message content ignored
+		recvCount.incrementAndGet();
 	}
 	
 	  private static Hashtable<String, Long> timeStampCache=new Hashtable<String, Long>();
