@@ -6,7 +6,7 @@
 
     <groupId>allan.jms</groupId>
     <artifactId>ip-mdb-test</artifactId>
-    <version>1.0</version>
+    <version>1.1</version>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -22,21 +22,7 @@
             <version>5.15.8</version>
         </dependency>
 
-        <!-- override slf4j logging dependencies to a current version -->
-
         <dependency>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-simple</artifactId>
-          <version>1.7.13</version>
-        </dependency>
-
-        <dependency>
-          <groupId>log4j</groupId>
-          <artifactId>log4j</artifactId>
-          <version>1.2.17</version>
-        </dependency>
-
-        <!--dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
             <version>2.17.1</version>
@@ -45,7 +31,7 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
             <version>2.17.1</version>
-        </dependency-->
+        </dependency>
     </dependencies>
 
     <build>
@@ -57,6 +43,19 @@
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
+                </configuration>
+            </plugin>
+            <!-- include multi-release in the jar manifest to avoid log4j reflection warnings -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.2.0</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Multi-Release>true</Multi-Release>
+                        </manifestEntries>
+                    </archive>
                 </configuration>
             </plugin>
             <!-- include all the dependencies into the jar so it's easier to execute the example -->

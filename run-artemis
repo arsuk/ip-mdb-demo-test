@@ -1,0 +1,2 @@
+java -cp .:target/ip-mdb-test-1.1.jar IPTestCommand $@ -properties jndi.artemis.properties
+
