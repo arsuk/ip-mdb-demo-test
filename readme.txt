@@ -3,7 +3,7 @@ ip-mdb-test
 
 This is a simple class that generates pacs.008 messages to test Instant Payments. It
 also consumes the pacs.002 responses.
-It is an improvement on existing tools because it is a Java tool that can create
+It is an improvement on existing tools because it is a Java tool that will create
 JMS messages with correct properties in the same way as real customers do. Furthermore,
 the tool sends to and receives from multiple connections. There are therefore multiple
 producers and consumers which is again what real clients do.
@@ -18,12 +18,11 @@ The command line is:
 
 java -cp ip-mdb-test-1.1.jar IPTestCommand
  
-The tpsrange argument can be used to vary the tps rate within a second for + or - of the given range.
-After requested number of transactions have been sent the tool will wait for replies until 10s after the reply
-queue is empty. 
+The can be displayed with -h and are:
 
 Usage: <count> <tps> -template templatefile -values amounts -creditorbics bics -debtorbics bics -properties jndiprops
       -tpsrange n -creditoribans ibans -debtoribans ibans -stopstatus status -stopcount n
+      
 Defaults are: count=10 tps=1 template=pacs.008.xml
 Change the jndi.properties file to change the broker hostname or queue names.
 '-h' or '-?' gives this help info.
@@ -39,3 +38,9 @@ The properties file can be used to set the number of connections used as well as
 is to be used.
 If no response queue is defined then the tool can only send messages. Queue names and connection info are defined
 in the jndi properties file. An example is provided.
+
+An advanced usage is to update the properties file at runtime. The tool will check if the tps, count, delay or restart
+properties have been changed. Note that changing tps, count or delay only have effect when sending messages. Also, the
+delay property overides the automatic calculation of the interval between sending messages for a session so it will
+have an impact on tps and distribution. The restart property is 0 by default, it is the number of restarts the session
+will have after unexpected termination (-1 means always restart).

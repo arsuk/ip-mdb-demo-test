@@ -142,6 +142,7 @@ public class IPTestCommand implements MessageListener,Runnable {
 		debtorBICs=getValueList(debtorBICsStr);
 		creditorIBANs=getValueList(creditorIBANsStr);
 		debtorIBANs=getValueList(debtorIBANsStr);
+		int threadRestart=0;
 		
 		range=0;
 		try {range=Integer.parseInt(rangeStr);} catch (Exception e) {};
@@ -206,10 +207,12 @@ public class IPTestCommand implements MessageListener,Runnable {
 				logger.info("Starting "+connectionCount+" sessions");
 				
 				Thread threads[] = new Thread[connectionCount];
-				for (int i=0;i<connectionCount;i++) {
+				int threadRestarts[] = new int [connectionCount];
+				for (int t=0;t<connectionCount;t++) {
 					IPTestCommand iptest=new IPTestCommand(); 
-					threads[i]=new Thread(iptest);
-					threads[i].start();
+					threads[t]=new Thread(iptest);
+					threads[t].start();
+					threadRestarts[t]=0;
 				};
 
 				long startTime=System.currentTimeMillis();
@@ -250,13 +253,22 @@ public class IPTestCommand implements MessageListener,Runnable {
 								logger.info("Using Count property "+count);
 							}
 						} catch (Exception e) {};
-						String DelayStr = props.getProperty("delay");
-						if (DelayStr!=null)
+						String delayStr = props.getProperty("delay");
+						if (delayStr!=null)
 						try {
-							int newDelay=Integer.parseInt(DelayStr);
+							int newDelay=Integer.parseInt(delayStr);
 							if (delay!=newDelay) {
 								delay=newDelay;
 								logger.info("Using Delay property "+delay);
+							}
+						} catch (Exception e) {};
+						String restartStr = props.getProperty("restart");
+						if (restartStr!=null)
+						try {
+							int newRestart=Integer.parseInt(restartStr);
+							if (threadRestart!=newRestart) {
+								threadRestart=newRestart;
+								logger.info("Using task restart property "+threadRestart);
 							}
 						} catch (Exception e) {};
 					}
@@ -267,20 +279,30 @@ public class IPTestCommand implements MessageListener,Runnable {
 						msgDoc = XMLutils.bytesToDoc(docText);
 					}					
 					Thread.sleep(ONESEC);
-					
-					int terminated=0;
-					for (int t=0;t<connectionCount;t++) {
-						if (threads[t].getState()==Thread.State.TERMINATED) terminated++;
-						logger.debug("State "+threads[t].getState());
-					};
-					sessionCount.set(connectionCount-terminated); 
-					if (terminated==connectionCount) {
-						stopFlag=true;
-						logger.info("All sessions terminated");
-					}
+
 					if (totalSendCount.get()>=count) {
 						stopFlag=true;
 						logger.info("Send count "+count+" reached, currently "+totalSendCount.get());
+					}
+					
+					int terminated=0;
+					for (int t=0;t<connectionCount;t++) {
+						if (threads[t].getState()==Thread.State.TERMINATED) {
+							if (!stopFlag && (threadRestart<0 || threadRestarts[t]<threadRestart)) {
+								IPTestCommand iptest=new IPTestCommand(); 
+								threads[t]=new Thread(iptest);
+								threads[t].start();
+								threadRestarts[t]++;
+								logger.info("Session "+t+" restarted");
+							} else
+								terminated++;
+						}
+						logger.debug("State "+threads[t].getState());
+					};
+					sessionCount.set(connectionCount-terminated);	// Update running count for tps calculation
+					if (terminated==connectionCount) {
+						stopFlag=true;
+						logger.info("All sessions terminated");
 					}
 					
 					long now=System.currentTimeMillis();
@@ -547,7 +569,7 @@ public class IPTestCommand implements MessageListener,Runnable {
 				  // Convert parameter to list
 				  list=parameter.split(",");
 			  } else {
-				  // Try if it is a file and if so convert to 
+				  // Try if it is a file and if so convert to list
 				  try {
 					  Path fileName = Paths.get(parameter);
 					  String ibans = new String(Files.readAllBytes(fileName),StandardCharsets.UTF_8);
