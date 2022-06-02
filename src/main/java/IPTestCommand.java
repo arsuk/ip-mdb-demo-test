@@ -83,6 +83,8 @@ public class IPTestCommand implements MessageListener,Runnable {
 	private static SimpleDateFormat dateTimeFormatGMT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");	// 2018-12-28T15:25:40.264
 
 	public static void main (String args[]) {
+		
+		logger.debug("Class path: "+System.getProperty("java.class.path"));
 
         if (MyArgs.arg(args,"-h") || MyArgs.arg(args,"-?") || MyArgs.arg(args,"-help")) {
             System.out.println("IPTestCommand V1.1.0");
@@ -202,8 +204,35 @@ public class IPTestCommand implements MessageListener,Runnable {
 
 				cf=(QueueConnectionFactory)ic.lookup(connectionFactoryStr);
 
-                logger.debug("Connection Factory "+cf);
- 
+				try {
+					org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory acf=(org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory)cf;
+					logger.debug("Class "+acf.getClass());
+					logger.debug("User "+acf.getUser());
+					logger.debug("Password "+acf.getPassword());
+					logger.debug("CallFailoverTimeout "+acf.getCallFailoverTimeout());
+					logger.debug("Call Timeout "+acf.getCallTimeout());
+					logger.debug("ReconnectAttempts "+acf.getReconnectAttempts());
+					logger.debug("MaxRetryInterval "+acf.getMaxRetryInterval());
+					logger.debug("RetryInterval "+acf.getRetryInterval());
+					logger.debug("InitialConnectionAttempts "+acf.getInitialConnectAttempts());
+					logger.debug("HA "+acf.isHA());
+					logger.debug("FailoverOnInitialConnection "+acf.isFailoverOnInitialConnection());
+					logger.debug("UseTopologyForLoadBalancing "+acf.isUseTopologyForLoadBalancing());
+					logger.debug("ConnectionLoadBalancingPolicyClassName "+acf.getConnectionLoadBalancingPolicyClassName());
+					logger.debug("ConsumerMaxRate "+acf.getConsumerMaxRate());	
+				} catch (Exception e) {};
+				try {
+					org.apache.activemq.ActiveMQConnectionFactory acf=(org.apache.activemq.ActiveMQConnectionFactory)cf;
+					logger.debug("Class "+acf.getClass());
+					logger.debug("UserName "+acf.getUserName());
+					logger.debug("Password "+acf.getPassword());
+					logger.debug("ConnectResponseTimeout "+acf.getConnectResponseTimeout());
+					logger.debug("Send Timeout "+acf.getSendTimeout());
+					logger.debug("SendAckAsync "+acf.isSendAcksAsync());
+					logger.debug("StatsRnabled "+acf.isStatsEnabled());
+					logger.debug("BrokerURL "+acf.getBrokerURL());					
+				} catch (Exception e) {};
+				
 				logger.info("Starting "+connectionCount+" sessions");
 				
 				Thread threads[] = new Thread[connectionCount];
@@ -297,7 +326,7 @@ public class IPTestCommand implements MessageListener,Runnable {
 							} else
 								terminated++;
 						}
-						logger.debug("State "+threads[t].getState());
+						logger.debug("State "+t+" "+threads[t].getState());
 					};
 					sessionCount.set(connectionCount-terminated);	// Update running count for tps calculation
 					if (terminated==connectionCount) {
