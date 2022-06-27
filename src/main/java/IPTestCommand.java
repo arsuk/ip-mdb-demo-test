@@ -9,6 +9,7 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
+import javax.jms.ExceptionListener;
 import javax.jms.MessageProducer;
 import javax.jms.Queue;
 import javax.jms.QueueConnectionFactory;
@@ -219,7 +220,8 @@ public class IPTestCommand implements MessageListener,Runnable {
 					logger.debug("FailoverOnInitialConnection "+acf.isFailoverOnInitialConnection());
 					logger.debug("UseTopologyForLoadBalancing "+acf.isUseTopologyForLoadBalancing());
 					logger.debug("ConnectionLoadBalancingPolicyClassName "+acf.getConnectionLoadBalancingPolicyClassName());
-					logger.debug("ConsumerMaxRate "+acf.getConsumerMaxRate());	
+					logger.debug("ConsumerMaxRate "+acf.getConsumerMaxRate());					
+					logger.debug("ProducerrMaxRate "+acf.getProducerMaxRate());
 				} catch (Exception e) {};
 				try {
 					org.apache.activemq.ActiveMQConnectionFactory acf=(org.apache.activemq.ActiveMQConnectionFactory)cf;
@@ -314,21 +316,8 @@ public class IPTestCommand implements MessageListener,Runnable {
 						logger.info("Send count "+count+" reached, currently "+totalSendCount.get());
 					}
 					
-					int terminated=0;
-					for (int t=0;t<connectionCount;t++) {
-						if (threads[t].getState()==Thread.State.TERMINATED) {
-							if (!stopFlag && (threadRestart<0 || threadRestarts[t]<threadRestart)) {
-								IPTestCommand iptest=new IPTestCommand(); 
-								threads[t]=new Thread(iptest);
-								threads[t].start();
-								threadRestarts[t]++;
-								logger.info("Session "+t+" restarted");
-							} else
-								terminated++;
-						}
-						logger.debug("State "+t+" "+threads[t].getState());
-					};
-					sessionCount.set(connectionCount-terminated);	// Update running count for tps calculation
+					int terminated=checkRunning(threads,threadRestarts,threadRestart);
+
 					if (terminated==connectionCount) {
 						stopFlag=true;
 						logger.info("All sessions terminated");
@@ -337,17 +326,17 @@ public class IPTestCommand implements MessageListener,Runnable {
 					long now=System.currentTimeMillis();
 					if (now > printTime || stopFlag) {
 						long periodSecs=(now-printTime+TENSECS)/ONESEC;
-						long recvTps=0;
-						long sendTps=0;
+						float recvTps=0;
+						float sendTps=0;
 						if (periodSecs>0) {
-							recvTps=(recvCount.get()-oldRecvCount)/periodSecs;
-							sendTps=(totalSendCount.get()-oldSendCount)/periodSecs;
+							recvTps=(float)(recvCount.get()-oldRecvCount)/periodSecs;
+							sendTps=(float)(totalSendCount.get()-oldSendCount)/periodSecs;
 						}
 						oldRecvCount=recvCount.get();
 						oldSendCount=totalSendCount.get();
 						logger.info("Sessions "+sessionCount.get()+" "+timeFormat.format(new Date()));
-						logger.info("Sent "+totalSendCount.get()+", TPS "+sendTps);
-						logger.info("Received "+recvCount+", TPS "+recvTps);
+						logger.info("Sent "+totalSendCount.get()+", TPS "+String.format("%.1f", sendTps));
+						logger.info("Received "+recvCount+", TPS "+String.format("%.1f", recvTps));
 						if (accpCount.get()>0 || rjctCount.get()>0)
 							logger.info("Accepted "+accpCount.get()+ " Rejected "+rjctCount);
 						printTime=now+TENSECS;
@@ -355,16 +344,27 @@ public class IPTestCommand implements MessageListener,Runnable {
 					i++;
 				}
 
-				// Loop to receive late replies - stops it no replies - goes on forever if send count < 0
+				// Loop to receive late replies - stops if no replies - goes on forever if send count < 0
+				if (count>=0) threadRestart=0;	// Don't restart threads if closing
 				oldRecvCount=recvCount.get();
+				int oldTerminated=0;
 				boolean countChanged=true;
 				while (countChanged||count<0) {
 					Thread.sleep(ONESEC);
-					countChanged=oldRecvCount!=recvCount.get();
 					if (countChanged) {
 						logger.info(timeFormat.format(new Date()));
-						logger.info("Receiving messages after send "+(recvCount.get()-oldRecvCount));
+						logger.info("Receiving messages after sending "+(recvCount.get()-oldRecvCount));
 						oldRecvCount=recvCount.get();						
+					}
+					countChanged=oldRecvCount!=recvCount.get();
+					int terminated=checkRunning(threads,threadRestarts,threadRestart);
+					if (terminated==connectionCount) {
+						logger.info("All sessions terminated");
+						break;
+					} else {
+						if (terminated!=oldTerminated)
+							logger.info("Open Sessions "+(connectionCount-terminated)+" "+timeFormat.format(new Date()));
+						oldTerminated=terminated;
 					}
 				}
 
@@ -396,9 +396,23 @@ public class IPTestCommand implements MessageListener,Runnable {
 	
 	public void run() {
 		Connection connection=null;
+
+		logger.debug("Thread started "+sessionCount.get());
+
 		try {
+			final boolean [] jmsError= {false};
+			
 			connection = cf.createConnection();
 
+			// set an exception listener
+		    connection.setExceptionListener(
+		    	      new ExceptionListener() {
+						@Override
+						public void onException(JMSException exception) {
+		    	            System.err.println("JMS exception handler: "+exception);
+							jmsError[0]=true;
+						}
+		    	    });
 			Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 			Queue queue = (Queue)ic.lookup(destinationJndiName);
 	
@@ -430,7 +444,7 @@ public class IPTestCommand implements MessageListener,Runnable {
 	        
 	        Document msgDoc = XMLutils.bytesToDoc(docText);
 	
-			while (totalSendCount.get()<count&&!stopFlag) {
+			while (totalSendCount.get()<count&&!stopFlag&&!jmsError[0]) {
 				// Check if messages have still to be sent this increment (other threads have not already done the TPS)
 				if (totalSendCount.get()-oldSendCount<=currentTPS) {
 					// Going to send so increment send count so other tasks do not start too many
@@ -515,13 +529,14 @@ public class IPTestCommand implements MessageListener,Runnable {
 			// Need to wait to stop receiving before closing connections
 			boolean countChanged=true;
 			int oldRecvCount=0;
-			while (countChanged||count<0) {
+			while ((countChanged||count<0)&&!jmsError[0]) {
 				Thread.sleep(ONESEC);
 				countChanged=oldRecvCount!=recvCount.get();
 				if (countChanged) {
 					oldRecvCount=recvCount.get();						
 				}
 			}
+			
 		} catch (JMSException e) {
 			logger.error("JMS error "+e);
 		} catch (NamingException e) {
@@ -536,7 +551,7 @@ public class IPTestCommand implements MessageListener,Runnable {
 					e.printStackTrace();
 				}
 		}
-		logger.debug("EXIT");
+		logger.debug("Session exit");
 	}
 
 	@Override
@@ -575,43 +590,62 @@ public class IPTestCommand implements MessageListener,Runnable {
 
 	}
 	
-	  private static Hashtable<String, Long> timeStampCache=new Hashtable<String, Long>();
+	static int checkRunning(Thread[]threads,int [] threadRestarts, int threadRestart) {
+		int terminated=0;
+		for (int t=0;t<connectionCount;t++) {
+			if (threads[t].getState()==Thread.State.TERMINATED) {
+				sessionCount.decrementAndGet();
+				if (threadRestart<0 || threadRestarts[t]<threadRestart) {
+					IPTestCommand iptest=new IPTestCommand(); 
+					threads[t]=new Thread(iptest);
+					threads[t].start();
+					threadRestarts[t]++;
+					logger.info("Session "+t+" restarted");
+				} else
+					terminated++;
+			}
+			logger.debug("State "+t+" "+threads[t].getState());
+		};
+		return terminated;
+	}
+	
+	private static Hashtable<String, Long> timeStampCache=new Hashtable<String, Long>();
 
-	  static boolean isUpdated( File file ) {
-		  long fileTimeStamp = file.lastModified();
-		  Long oldTimeStamp = (Long) timeStampCache.get(file.getAbsolutePath());
-		  if (oldTimeStamp==null)
-			  timeStampCache.put(file.getAbsolutePath(),new Long(fileTimeStamp));
-		  else
-			  timeStampCache.replace(file.getAbsolutePath(),new Long(fileTimeStamp));
+	static boolean isUpdated( File file ) {
+		long fileTimeStamp = file.lastModified();
+		Long oldTimeStamp = (Long) timeStampCache.get(file.getAbsolutePath());
+		if (oldTimeStamp==null)
+			timeStampCache.put(file.getAbsolutePath(),new Long(fileTimeStamp));
+		else
+			timeStampCache.replace(file.getAbsolutePath(),new Long(fileTimeStamp));
 
-		  if (oldTimeStamp!=null && fileTimeStamp!=oldTimeStamp) {
-			  return true;
-		  }
-		  return false;
-	  }
+		if (oldTimeStamp!=null && fileTimeStamp!=oldTimeStamp) {
+			return true;
+		}
+		return false;
+	}
 	  
-	  static String[] getValueList(String parameter) {
-		  String list[]=null;
+	static String[] getValueList(String parameter) {
+		String list[]=null;
 		  if (parameter!=null) {
 			  if (parameter.contains(",")) {
-				  // Convert parameter to list
-				  list=parameter.split(",");
-			  } else {
-				  // Try if it is a file and if so convert to list
-				  try {
-					  Path fileName = Paths.get(parameter);
-					  String ibans = new String(Files.readAllBytes(fileName),StandardCharsets.UTF_8);
-					  list=ibans.split("\n");
-				  } catch (IOException e) {
-					  // Not a valid file so assume that it is a single value parameter
-					  logger.trace("Bad file "+e);
+			  // Convert parameter to list
+			  list=parameter.split(",");
+		  } else {
+			  // Try if it is a file and if so convert to list
+			  try {
+				  Path fileName = Paths.get(parameter);
+				  String ibans = new String(Files.readAllBytes(fileName),StandardCharsets.UTF_8);
+				  list=ibans.split("\n");
+			  } catch (IOException e) {
+				  // Not a valid file so assume that it is a single value parameter
+				  logger.trace("Bad file "+e);
 					  list=new String [] {parameter};
 				  }
 			  }
 		  }
 		  return list;
-	  }
+	}
 
 }
 
