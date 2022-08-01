@@ -43,4 +43,4 @@ An advanced usage is to update the properties file at runtime. The tool will che
 properties have been changed. Note that changing tps, count or delay only have effect when sending messages. Also, the
 delay property overides the automatic calculation of the interval between sending messages for a session so it will
 have an impact on tps and distribution. The restart property is 0 by default, it is the number of restarts the session
-will have after unexpected termination (-1 means always restart).
+can have after unexpected termination (-1 means always restart).
