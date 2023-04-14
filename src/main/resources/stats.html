@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>IP Test stats</title>
+
+<script type="text/javascript">
+var stated=false;
+function OnSubmitForm()
+{
+	document.myform.action = 'stats';
+    started=true;
+}
+window.onload=function(){ 
+    var interval = setInterval(function() {
+            redirect();
+    }, 10000);
+};
+function redirect() {
+    if (started) {
+        document.myform.submit();
+    }
+}
+</script>
+</head>
+<body>
+<a id="logo" href="http://www.worldline.com"><img alt="worldline" height="120" width="240" src="logo.png" /></a>
+<br/>
+<br/>
+<b>This is the IP message generator status update form. It will update itself every 10s.</b><br/>
+<pre>
+<form name="myform" method="post" onsubmit="OnSubmitForm();" target="out" >
+<p>
+	<input type="submit" value="start" />
+</p>
+</form>
+<a href="../index.html">Menu</a>
+<p>
+    Last Response
+    <iframe name="out" height=110 width=800/>
+</p>
+</pre>
+</body>
+</html>

@@ -1,4 +1,6 @@
 #!/bin/bash
+# Example of setting the TPS variable in the jndi.properties file
+# If it is available it is better to use the tool web pages or curl
 if [ "$1" ]; then
     TPS=$1
     if ! [ "$TPS" -eq "$TPS" ] 2>/dev/null; then

@@ -6,32 +6,43 @@
 
     <groupId>allan.jms</groupId>
     <artifactId>ip-mdb-test</artifactId>
-    <version>1.1</version>
+    <version>1.2</version>
     <packaging>jar</packaging>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.activemq</groupId>
             <artifactId>artemis-jms-client</artifactId>
-            <version>2.9.0</version>
+            <version>2.27.1</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.activemq</groupId>
             <artifactId>activemq-client</artifactId>
-            <version>5.16.4</version>
+            <version>5.15.8</version>
         </dependency>
 
         <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
-            <version>2.17.1</version>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.7</version>
         </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.7</version>
+        </dependency> 
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
             <version>2.17.1</version>
         </dependency>
+        
+    	<dependency>
+        	<groupId>io.undertow</groupId>
+        	<artifactId>undertow-core</artifactId>
+        	<version>2.2.17.Final</version>
+    	</dependency>
     </dependencies>
 
     <build>
@@ -45,13 +56,17 @@
                     <target>1.8</target>
                 </configuration>
             </plugin>
-            <!-- include multi-release in the jar manifest to avoid log4j reflection warningsFactiv -->
+            <!-- The following pluging avoids log4j2 reflection warnings -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.2.0</version>
                 <configuration>
                     <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <mainClass>Worldline.IPTestCommand</mainClass>
+                        </manifest>
                         <manifestEntries>
                             <Multi-Release>true</Multi-Release>
                         </manifestEntries>

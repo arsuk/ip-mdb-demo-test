@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>IP test management</title>
+
+<script type="text/javascript">
+function OnSubmitForm()
+{
+    var ifrm = document.getElementById('ifrm');
+    ifrm = ifrm.contentWindow || ifrm.contentDocument.document || ifrm.contentDocument;
+    ifrm.document.open();
+    ifrm.document.write('Running!');
+    ifrm.document.close();
+    var action='test?count='+encodeURIComponent(document.getElementById("CNT").value);
+    action=action+'&tps='+encodeURIComponent(document.getElementById("TPS").value);
+    action=action+'&delay='+encodeURIComponent(document.getElementById("DEL").value);
+    action=action+'&values='+encodeURIComponent(document.getElementById("VAL").value);
+    action=action+'&taskrestart='+encodeURIComponent(document.getElementById("TRES").value);
+    action=action+'&command='+encodeURIComponent(document.getElementById("CMD").value);
+    document.myform.reset();
+	document.myform.action = action;
+}
+</script>
+</head>
+<body>
+<a id="logo" href="http://www.worldline.com"><img alt="worldline" height="100" width="240" src="logo.png" /></a>
+<br/>
+<br/>
+<b>This is the IP test message generator settings and command form</b><br/>
+<pre>
+<form name="myform" method="post" onsubmit="OnSubmitForm();" target="out" >
+<p>
+    Count:        <input type="text" id="CNT" size="10" value="" /> change target test message count
+    TPS:          <input type="text" id="TPS" size="10" value="" /> change transactions per second
+    Delay:        <input type="text" id="DEL" size="10" value="" /> override calculated delay used for TPS distribution
+    Values:       <input type="text" id="VAL" size="10" value="" /> override comma separated values provided on command line
+    Task restart: <input type="text" id="TRES" size="10" value="" /> number of times a task can restart after error (0 never, -1 indefinitely)
+    
+    Command:      <select name="command" id="CMD">
+                    <option value ="">None</option>
+                    <option value ="stop">stop sending</option>
+                    <option value ="restart">restart sessions</option>
+                    <option value ="exit">exit application</option>
+                  </select>
+</p><p>
+	<input type="submit" value="send" />
+</p>
+</form>
+<a href="../index.html">Menu</a>
+<p>
+    Last Response
+    <iframe id='ifrm' name="out" height=140 width=900 scrolling="auto" />
+</p>
+</pre>
+</body>
+</html>
