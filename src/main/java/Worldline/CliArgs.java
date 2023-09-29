@@ -352,7 +352,7 @@ public class CliArgs {
 	}
 
 	public static boolean isSwitch(String str) {
-		  return str.trim().startsWith("-") && !isNumeric(str);
+		  return str.trim().startsWith("-") && !isNumeric(str) && !str.contains(",");
 	}
 	
 	public static boolean isNumeric(String str) {

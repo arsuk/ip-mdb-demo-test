@@ -159,6 +159,7 @@ public class IPTestCommand implements MessageListener,ExceptionListener,Transpor
 	            System.out.println("If count is zero then the tool will not send messages and will receive messages until the queue is empty (-1 forever).");
 	            System.out.println("Stop status is used to check the response status and stop the test if it matches after a stop count (default 1).");
 	            System.out.println("The stop status is a comma seperated string for status and reason, e.g. 'ACCP' or 'RJCT,AB05', regex syntax supported.");
+	            System.out.println("Set the status to an unknown (i.e. xxxx) if you do not want to stop but do want the accepted and rejected counts.");
 	            System.out.println("-duplicate-check will display a warning if the last 10000 responses include a duplicate TXID for the current message.");
 	            System.out.println("If -receive-after-send is present and there is a response queue then the command will wait for responses indefinitely.");
 	            System.out.println("Some parameters can be modified at runtime by editing the jndi properties file or by using the web interface.");
@@ -464,14 +465,12 @@ public class IPTestCommand implements MessageListener,ExceptionListener,Transpor
 			}
 
 			// Loop to receive late replies - stops if no replies if send count >= 0, goes on forever if send count < 0
-			//if (count>=0&&!restart) threadRestart=0;	// Don't restart threads if closing
-			oldRecvCount=totalRecvCount.get();
 			int oldTerminated=0;
 			boolean countChanged=true;
 			while (!restart&&(countChanged||targetMessageCount<0||receiveAfterSend)) {
 				sleep(ONESEC);
 				long now=System.currentTimeMillis();
-				if (countChanged||now>printTime) {
+				if (countChanged&&now>printTime) {
 					long periodSecs=(now-lastPrintTime)/ONESEC;					
 					int diffRecv=totalRecvCount.get()-oldRecvCount;
 					if (periodSecs>0) {
@@ -715,7 +714,7 @@ public class IPTestCommand implements MessageListener,ExceptionListener,Transpor
 
 	@Override
 	public void onMessage(Message msg) {
-		// Just count the received message - only used for the TPS count - and status checks
+		// Count the received message - only used for the TPS count - and status checks
 		totalRecvCount.incrementAndGet();
 		myRecvCount++;
 		if (stopStatus!=null||duplicateCheck)
@@ -723,7 +722,9 @@ public class IPTestCommand implements MessageListener,ExceptionListener,Transpor
 			TextMessage tm = (TextMessage) msg;
 			Document msgDoc = XMLutils.stringToDoc(tm.getText());
 			if (stopStatus!=null&&msgDoc!=null) {
-		        String status=XMLutils.getElementValue(msgDoc,"GrpSts");
+		        String status=XMLutils.getElementValue(msgDoc,"TxSts");
+		        if (status==null) 
+		        	status=XMLutils.getElementValue(msgDoc,"GrpSts");
 		        String reason=null;
 	          	Element rsnInf=XMLutils.getElement(msgDoc,"StsRsnInf");
 	           	if (rsnInf!=null) reason=XMLutils.getElementValue(rsnInf,"Cd");
@@ -756,7 +757,7 @@ public class IPTestCommand implements MessageListener,ExceptionListener,Transpor
 	        	}
 	        }
 		} catch (JMSException e) {
-			logger.warn("Message format not text");
+			logger.warn("Message format error");
 		}
 	}
 	

@@ -1,0 +1,2 @@
+curl -X post  http://localhost:8080/stats
+

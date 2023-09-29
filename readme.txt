@@ -1,17 +1,15 @@
 ip-mdb-test
 ===========
 
-This is a simple class that generates pacs.008 messages to test Instant Payments. It
-also consumes the pacs.002 responses.
-It is an improvement on existing tools because it is a Java tool that will create
-JMS messages with correct properties in the same way as real customers do. Furthermore,
-the tool sends to and receives from multiple connections. There are therefore multiple
-producers and consumers which is again what real clients do.
-While the command is designed to send pacs.008 messages to an
-instantpayments_mybank_originator_payment_request queue and receive pacs.002 messages
-from an instantpayments_mybank_originator_payment_response queue it can send any text
-message types, simply use another template and define other queues.
-It is a JMS tool and can run with ActiveMQ or Artemis depending on the class definitions in the
+This is a simple class that generates pacs.008 messages to test Instant Payments. It also consumes the pacs.002
+responses.
+It is an improvement on existing tools because it is a Java tool that will create JMS messages with correct
+properties in the same way as real SEPA IP clients do. Furthermore, the tool sends to and receives from multiple
+connections. There are therefore multiple producers and consumers which is again what real clients do.
+While the command is designed to send pacs.008 messages to an instantpayments_mybank_originator_payment_request
+queue and receive pacs.002 messages from an instantpayments_mybank_originator_payment_response queue it can send
+any text message types, simply use another template and define other queues.
+It is a JMS tool and can run with ActiveMQ or Artemis depending on the connection factory class definitions in the
 jndi.properties in the current directory or an alternative file specified with -properties.
 
 The command line is:
@@ -47,3 +45,6 @@ properties have been changed. Note that changing tps, count or delay only have e
 delay property overides the automatic calculation of the interval between sending messages for a session so it will
 have an impact on tps and distribution. The restart property is 0 by default, it is the number of restarts the session
 can have after unexpected termination (-1 means always restart).
+The tool has a web interface so that test parameters can be interactively changed and tests restarted. A port number
+must be defined in the properties file to enable this. See the example jndi.properties and jndi.artemis.properties
+files provided.
